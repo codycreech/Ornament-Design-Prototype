@@ -171,3 +171,37 @@ select {
     image-rendering: pixelated;
   }
 }
+
+/* Keep the drawing at its native resolution and scroll its own panel. */
+#right, #contentRow, #gridPanel { min-width: 0; }
+#contentRow { flex-wrap: wrap; }
+#gridPanel { flex: 1 1 680px; overflow: auto; max-width: 100%; }
+#spherePanel { flex: 1 1 300px; min-width: 0; }
+#gridMount { width: max-content; }
+#controlsMount h1 { margin: 0; font-size: 22px; }
+#controlsMount p, .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 6px 0; }
+#controlsUI h2 { font-size: 15px; margin: 12px 0 0; }
+#controlsUI label { font-size: 13px; }
+#controlsUI input[type="text"], #controlsUI select { width: 100%; min-width: 0; padding: 10px; }
+#controlsUI input[type="text"] { background: #1a1a1a; color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+#controlsUI .row select { width: auto; max-width: 65%; }
+.actions { justify-content: flex-start; flex-wrap: wrap; }
+button:disabled { opacity: .4; cursor: default; }
+:focus-visible { outline: 2px solid #00aaff; outline-offset: 3px; }
+@media (max-width: 640px) {
+  #contentRow, #gridPanel { width: 100%; }
+  #spherePanel { width: min(46vw, 240px); height: min(46vw, 240px); }
+  #app { padding-bottom: 250px; }
+}
+@media print {
+  @page { size: portrait; margin: 10mm; }
+  html, body, #app, #right, #contentRow, #gridPanel { display: block !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; border: 0 !important; }
+  #left, #spherePanel, #gridPanel h2 { display: none !important; }
+  #gridMount { position: static !important; }
+  #gridMount canvas { max-width: 100% !important; }
+}
+
+#spherePanel h2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#previewToggle { padding: 4px 8px; font-size: 11px; }
+#spherePanel.collapsed #sphereMount { display: none; }
+@media (max-width: 640px) { #spherePanel.collapsed { height: 52px; width: 180px; } }

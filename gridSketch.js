@@ -57,7 +57,12 @@ new p5((p) => {
 
     // Grid UI is mostly static — 60fps is wasted CPU/battery, especially
     // on mobile. This is still plenty responsive for painting.
-    p.frameRate(30);
+    p.noLoop();
+    window.addEventListener("ornament:change", () => p.redraw());
+    c.elt.addEventListener("pointermove", () => p.redraw());
+    c.elt.addEventListener("pointerleave", () => { S.hoverGrid = null; hoverIdx = -1; p.redraw(); });
+    window.addEventListener("blur", () => p.mouseReleased());
+    H.prepareGridOutput = () => { p.background(255); drawGrid(); if (staticOverlay) p.image(staticOverlay, 0, 0); };
 
     loadGrid();
     autoResizeToFit();
@@ -70,7 +75,7 @@ new p5((p) => {
   };
 
   p.draw = () => {
-    p.clear();
+    p.background(255);
 
     hoverIdx = hitTest(p.mouseX, p.mouseY);
     if (hoverIdx >= 0) {
@@ -90,6 +95,7 @@ new p5((p) => {
     if (!S.paintEnabled) return;
     hoverIdx = hitTest(p.mouseX, p.mouseY);
     if (hoverIdx < 0) return;
+    H.beginEdit();
     isPainting = true;
     const isErase = (p.mouseButton === p.RIGHT);
     lastPaintX = p.mouseX;
@@ -106,6 +112,7 @@ new p5((p) => {
   };
 
   p.mouseReleased = () => {
+    H.endEdit();
     isPainting = false;
     lastPaintX = null;
     lastPaintY = null;
@@ -118,6 +125,7 @@ new p5((p) => {
     // Only paint if touch is inside this canvas
     hoverIdx = hitTest(p.mouseX, p.mouseY);
     if (hoverIdx < 0) return true;
+    H.beginEdit();
     isPainting = true;
     lastPaintX = p.mouseX;
     lastPaintY = p.mouseY;
@@ -134,10 +142,11 @@ new p5((p) => {
   };
 
   p.touchEnded = () => {
+    H.endEdit();
     isPainting = false;
     lastPaintX = null;
     lastPaintY = null;
-    return false;
+    return !isPainting;
   };
 
 
@@ -162,7 +171,7 @@ new p5((p) => {
     const dy = my - lastPaintY;
     const dist = Math.sqrt(dx*dx + dy*dy);
     const step = 5; // px between samples along the stroke
-    const steps = Math.min(40, Math.max(1, Math.ceil(dist / step)));
+    const steps = Math.min(1000, Math.max(1, Math.ceil(dist / step)));
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
       const sx = lastPaintX + dx * t;

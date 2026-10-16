@@ -1,6 +1,7 @@
 // shared.js — global shared state for all sketches
 
 window.Shared = {
+  revision: 0,
   // Sphere lattice constants (your finalized model)
   GRID_COUNT: 16,
   NUM_LATITUDE: 16,
@@ -44,62 +45,95 @@ window.Shared = {
 
 // Helpers shared across sketches
 window.SharedHelpers = {
+  // All edits go through one validated model so grid, preview and history agree.
+  isColor(value) { return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value); },
+
+  notifyChange() {
+    window.Shared.revision++;
+    if (this.changePending) return;
+    this.changePending = true;
+    requestAnimationFrame(() => {
+      this.changePending = false;
+      window.dispatchEvent(new Event("ornament:change"));
+    });
+  },
+
   setPaintByCellId(cellId, colorOrNull) {
-    const S = window.Shared;
-    const nodeId = S.cellIdToSphereNode[String(cellId)];
-    if (nodeId === undefined) return;
-    const nk = String(nodeId);
-    const ck = String(cellId);
-    if (colorOrNull == null) {
-      delete S.nodePaint[nk];
-      delete S.cellPaint[ck];
-    } else {
-      S.nodePaint[nk] = colorOrNull;
-      S.cellPaint[ck] = colorOrNull;
-    }
+    const nodeId = window.Shared.cellIdToSphereNode[String(cellId)];
+    if (nodeId !== undefined) this.setPaintByNodeId(nodeId, colorOrNull);
   },
 
   setPaintByNodeId(nodeId, colorOrNull) {
     const S = window.Shared;
     const nk = String(nodeId);
-    const cellId = S.sphereNodeToCellId[Number(nodeId)];
-    if (colorOrNull == null) {
-      delete S.nodePaint[nk];
-      if (cellId) delete S.cellPaint[String(cellId)];
-    } else {
-      S.nodePaint[nk] = colorOrNull;
-      if (cellId) S.cellPaint[String(cellId)] = colorOrNull;
-    }
-  }
-,
-  // ---- Profiles ----
+    const cellId = S.sphereNodeToCellId[nk];
+    if (cellId === undefined || (colorOrNull != null && !this.isColor(colorOrNull))) return;
+    const color = colorOrNull == null ? undefined : colorOrNull.toLowerCase();
+    if (S.nodePaint[nk] === color) return;
+    if (color === undefined) { delete S.nodePaint[nk]; delete S.cellPaint[cellId]; }
+    else { S.nodePaint[nk] = color; S.cellPaint[cellId] = color; }
+    this.notifyChange();
+  },
+
   buildPaintProfile(name) {
     const S = window.Shared;
-    return {
-      version: 1,
-      name: name || "",
-      createdAt: new Date().toISOString(),
-      sphereBaseColor: S.sphereBaseColor,
-      nodePaint: { ...S.nodePaint }
-    };
+    return { version: 1, name: String(name || "").trim(), createdAt: new Date().toISOString(),
+      sphereBaseColor: S.sphereBaseColor, nodePaint: { ...S.nodePaint } };
+  },
+
+  normalizeProfile(profile) {
+    if (!profile || typeof profile !== "object" || Array.isArray(profile) ||
+        (profile.version !== undefined && profile.version !== 1) ||
+        !profile.nodePaint || typeof profile.nodePaint !== "object" || Array.isArray(profile.nodePaint)) {
+      throw new Error("Choose an Ornament profile JSON file (version 1).");
+    }
+    const nodePaint = Object.create(null);
+    for (const [id, color] of Object.entries(profile.nodePaint)) {
+      if (!Object.hasOwn(window.Shared.sphereNodeToCellId, id) || !this.isColor(color)) {
+        throw new Error("The profile contains an unknown bead or invalid color.");
+      }
+      nodePaint[id] = color.toLowerCase();
+    }
+    const base = profile.sphereBaseColor || window.Shared.defaults.sphere;
+    if (!this.isColor(base)) throw new Error("The sphere color is invalid.");
+    return { version: 1, name: typeof profile.name === "string" ? profile.name.trim().slice(0, 100) : "",
+      createdAt: typeof profile.createdAt === "string" ? profile.createdAt : new Date().toISOString(),
+      sphereBaseColor: base.toLowerCase(), nodePaint };
   },
 
   applyPaintProfile(profile) {
+    const valid = this.normalizeProfile(profile); // Validate BEFORE changing anything.
     const S = window.Shared;
-    if (!profile || typeof profile !== "object") return;
-
-    // Optional: sphere base color stored with profile
-    if (profile.sphereBaseColor) S.sphereBaseColor = profile.sphereBaseColor;
-
-    // Clear then rebuild via stable nodeId -> cellId mapping
-    S.nodePaint = Object.create(null);
+    S.nodePaint = Object.assign(Object.create(null), valid.nodePaint);
     S.cellPaint = Object.create(null);
+    for (const [id, color] of Object.entries(valid.nodePaint)) S.cellPaint[S.sphereNodeToCellId[id]] = color;
+    S.sphereBaseColor = valid.sphereBaseColor;
+    this.notifyChange();
+  },
 
-    const np = profile.nodePaint || {};
-    for (const [nodeId, color] of Object.entries(np)) {
-      if (!color) continue;
-      window.SharedHelpers.setPaintByNodeId(nodeId, color);
-    }
+  history: [], redoHistory: [], pendingEdit: null,
+  beginEdit() { if (!this.pendingEdit) this.pendingEdit = this.buildPaintProfile(""); },
+  endEdit() {
+    if (!this.pendingEdit) return;
+    const before = this.pendingEdit;
+    this.pendingEdit = null;
+    const after = this.buildPaintProfile("");
+    if (before.sphereBaseColor === after.sphereBaseColor && JSON.stringify(before.nodePaint) === JSON.stringify(after.nodePaint)) return;
+    this.history.push(before);
+    if (this.history.length > 50) this.history.shift();
+    this.redoHistory = [];
+    this.notifyChange();
+  },
+  undo() {
+    this.endEdit();
+    if (!this.history.length) return;
+    this.redoHistory.push(this.buildPaintProfile(""));
+    this.applyPaintProfile(this.history.pop());
+  },
+  redo() {
+    if (!this.redoHistory.length) return;
+    this.history.push(this.buildPaintProfile(""));
+    this.applyPaintProfile(this.redoHistory.pop());
   },
 
   // ---- Device / performance detection ----
@@ -107,9 +141,6 @@ window.SharedHelpers = {
   // everything else (desktop) high. Used to pick sphere polygon detail and
   // frame-rate caps so the app stays smooth on mobile GPUs and battery.
   detectDeviceTier() {
-    const w = Math.min(window.innerWidth || 1200, window.innerHeight || 1200) === window.innerHeight
-      ? Math.max(window.innerWidth || 1200, 1)
-      : Math.max(window.innerWidth || 1200, 1);
     const shortSide = Math.min(window.innerWidth || 1200, window.innerHeight || 1200);
     const touch = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
     if (touch && shortSide < 600) return "phone";

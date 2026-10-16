@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Ornament Design Prototype v1.2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ornament Design Prototype Studio</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.webmanifest" />
   <!-- iOS home-screen / standalone app support -->
@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Ornament" />
   <meta name="theme-color" content="#0b0b0b" />
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <script src="vendor/p5.min.js"></script>
   <!-- Shared state -->
   <script src="shared.js"></script>
   <!-- Your mapping data (generated from your JSON export) -->
@@ -34,7 +34,7 @@
         </section>
 
         <section class="panel" id="spherePanel">
-          <h2>Sphere Preview</h2>
+          <h2>Sphere Preview <button id="previewToggle" aria-expanded="true" aria-controls="sphereMount">Hide</button></h2>
           <div id="sphereMount"></div>
         </section>
       </div>
@@ -44,5 +44,10 @@
   <script src="controlsSketch.js"></script>
   <script src="gridSketch.js"></script>
   <script src="sphereSketch.js"></script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("./sw.js").catch(console.warn);
+    }
+  </script>
 </body>
 </html>
