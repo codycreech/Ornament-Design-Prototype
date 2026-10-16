@@ -58,7 +58,7 @@ new p5((p) => {
     // Grid UI is mostly static — 60fps is wasted CPU/battery, especially
     // on mobile. This is still plenty responsive for painting.
     p.noLoop();
-    window.addEventListener("ornament:change", () => p.redraw());
+    window.addEventListener("ornament:change", () => { c.elt.style.touchAction = S.paintEnabled ? "none" : "auto"; p.redraw(); });
     c.elt.addEventListener("pointermove", () => p.redraw());
     c.elt.addEventListener("pointerleave", () => { S.hoverGrid = null; hoverIdx = -1; p.redraw(); });
     window.addEventListener("blur", () => p.mouseReleased());

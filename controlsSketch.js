@@ -23,7 +23,7 @@
     <p id="status" class="hint" role="status" aria-live="polite"></p>
     <h2>Output</h2>
     <div class="row actions"><button id="print">Print grid</button><button id="png">Download PNG</button></div>
-    <p class="hint">Drag to paint; right-drag to erase. On touch screens, use Touch eraser. Drag the sphere to rotate; pinch or scroll to zoom. Undo: Ctrl/Cmd+Z.</p>`;
+    <p class="hint">Drag to paint; right-drag to erase. On touch screens, use Touch eraser; turn painting off to scroll the grid. Drag the sphere to rotate; pinch or scroll to zoom. Undo: Ctrl/Cmd+Z.</p>`;
   document.getElementById('previewToggle').onclick = event => {
     const collapsed = document.getElementById('spherePanel').classList.toggle('collapsed');
     event.target.textContent = collapsed ? 'Show' : 'Hide';
@@ -66,7 +66,7 @@
   }
   el('brushColor').oninput = e => { S.selectedColor = e.target.value; };
   el('brushSize').oninput = e => { S.brushSize = Number(e.target.value); el('brushValue').value = S.brushSize; H.notifyChange(); };
-  el('paintEnabled').onchange = e => { S.paintEnabled = e.target.checked; };
+  el('paintEnabled').onchange = e => { S.paintEnabled = e.target.checked; H.notifyChange(); };
   el('touchErase').onchange = e => { S.touchErase = e.target.checked; };
   el('quality').onchange = e => { S.performanceMode = e.target.value; H.notifyChange(); };
   el('sphereColor').oninput = e => { H.beginEdit(); S.sphereBaseColor = e.target.value; H.notifyChange(); };
