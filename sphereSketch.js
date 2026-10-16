@@ -169,13 +169,16 @@ new p5((p) => {
     }
     meshes = [];
     for (const [color, nodes] of groups) {
+      // Bounded batches also work on WebGL 1 without 32-bit index support.
+      for (let offset = 0; offset < nodes.length; offset += 500) {
       const geometry = p.buildGeometry(() => {
-        for (const n of nodes) {
+        for (const n of nodes.slice(offset, offset + 500)) {
           p.push(); p.translate(n.x, n.y, n.z);
           p.sphere(n.radius, quality.nodeU, quality.nodeV); p.pop();
         }
       });
       meshes.push({color, geometry});
+    }
     }
     meshRevision = S.revision;
   }
